@@ -7,23 +7,33 @@ defmodule ImagePlugParser do
 
   @behaviour Plug.Parsers
 
-  # @subtypes ["jpeg", "png"]
-
   def init(opts) do
     {subtypes, opts} = Keyword.pop(opts, :subtypes)
     {body_reader, opts} = Keyword.pop(opts, :body_reader, {Conn, :read_body, []})
 
+    unless subtypes do
+      raise ArgumentError, "Image parser expects a :subtypes option"
+    end
+
     {body_reader, subtypes, opts}
   end
 
-  def parse(%Conn{method: "PUT"} = conn, "image", subtype, _headers, {{mod, fun, args}, decoder, opts}) when subtype in @subtypes do
-    conn
-    |> Conn.read_body(opts)
-    |> save()
+  def parse(%Conn{method: "PUT"} = conn, "image", subtype, _headers, {body_reader, subtypes, opts}) do
+    if subtype in subtypes do
+      conn
+      |> read(body_reader, opts)
+      |> save()
+    else
+      {:next, conn}
+    end
   end
 
   def parse(conn, _type, _subtype, _headers, _opts) do
     {:next, conn}
+  end
+
+  defp read(conn, {mod, fun, args}, opts) do
+    apply(mod, fun, [conn, opts | args])
   end
 
   defp save({:ok, data, conn}) do
@@ -54,7 +64,9 @@ defmodule ImagePlugParser do
     raise Plug.BadRequestError
   end
 
-  defp get_filename(%Plug.Conn{path_info: ["api", "files", page_id, filename]}) do
-    "#{page_id}/#{filename}"
+  defp get_filename(%Plug.Conn{params: params}) do
+    params
+    |> Map.get("filename")
+    |> Path.join()
   end
 end
