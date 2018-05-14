@@ -10,7 +10,7 @@ by adding `image_plug_parser` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:image_plug_parser, "~> 0.1.0"}
+    {:image_plug_parser, "~> 1.0.0"}
   ]
 end
 ```
